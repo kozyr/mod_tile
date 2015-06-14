@@ -453,7 +453,10 @@ static void add_expiry(request_rec *r, struct protocol * cmd)
 
     time_t rawtime;
     time ( &rawtime );
-    maxAge = difftime(rawtime, finfo->mtime/1000000);
+    maxAge = 1800 - difftime(rawtime, finfo->mtime/1000000);
+    if (maxAge < 0) {
+        maxAge = 0;
+    }
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "Setting tiles maxAge to %ld\n", maxAge);
 
     apr_table_mergen(t, "Cache-Control",
