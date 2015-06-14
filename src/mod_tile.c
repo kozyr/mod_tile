@@ -451,57 +451,13 @@ static void add_expiry(request_rec *r, struct protocol * cmd)
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "expires(%s), uri(%s),, path_info(%s)\n",
                   r->handler, r->uri, r->path_info);
 
-    /* If the hostname matches the "extended caching hostname" then set the cache age accordingly */
-    if ((scfg->cache_extended_hostname[0] != 0) && (strstr(r->hostname,
-            scfg->cache_extended_hostname) != NULL)) {
-        maxAge = scfg->cache_extended_duration;
-    } else {
-
-        /* Test if the tile we are serving is out of date, then set a low maxAge*/
-        if (state == tileOld) {
-            holdoff = (scfg->cache_duration_dirty / 2) * (rand() / (RAND_MAX
-                    + 1.0));
-            maxAge = scfg->cache_duration_dirty + holdoff;
-        } else {
-            // cache heuristic based on zoom level
-            if (cmd->z > tile_config->maxzoom) {
-                minCache = 0;
-                ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
-                        "z (%i) is larger than MAXZOOM %i\n", cmd->z, tile_config->maxzoom);
-            } else {
-                minCache = scfg->mincachetime[cmd->z];
-            }
-            // Time to the next known complete rerender
-            //planetTimestamp = apr_time_sec(getPlanetTime(r)
-            //        + apr_time_from_sec(PLANET_INTERVAL) - r->request_time);
-            // Time since the last render of this tile
-            lastModified = (int) (((double) apr_time_sec(r->request_time
-                    - finfo->mtime))
-                    * scfg->cache_duration_last_modified_factor);
-            // Add a random jitter of 3 hours to space out cache expiry
-            holdoff = (3 * 60 * 60) * (rand() / (RAND_MAX + 1.0));
-
-            //maxAge = MAX(minCache, planetTimestamp);
-            maxAge = minCache;
-            maxAge = MAX(maxAge, lastModified);
-            maxAge += holdoff;
-
-            ap_log_rerror(
-                    APLOG_MARK,
-                    APLOG_DEBUG,
-                    0,
-                    r,
-                    "caching heuristics: zoom level based %ld; last modified %ld\n",
-                    minCache, lastModified);
-        }
-
-        maxAge = MIN(maxAge, scfg->cache_duration_max);
-    }
-
+    time_t rawtime;
+    time ( &rawtime );
+    maxAge = difftime(rawtime, finfo->mtime/1000000);
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "Setting tiles maxAge to %ld\n", maxAge);
 
     apr_table_mergen(t, "Cache-Control",
-                     apr_psprintf(r->pool, "max-age=%" APR_TIME_T_FMT,
+                     apr_psprintf(r->pool, "public, max-age=%d",
                      maxAge));
     timestr = apr_palloc(r->pool, APR_RFC822_DATE_LEN);
     apr_rfc822_date(timestr, (apr_time_from_sec(maxAge) + r->request_time));
