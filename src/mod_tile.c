@@ -453,7 +453,7 @@ static void add_expiry(request_rec *r, struct protocol * cmd)
 
     time_t rawtime;
     time ( &rawtime );
-    maxAge = 1800 - difftime(rawtime, finfo->mtime/1000000);
+    maxAge = 3600 - difftime(rawtime, finfo->mtime/1000000);
     if (maxAge < 0) {
         maxAge = 0;
     }
